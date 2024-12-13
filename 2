@@ -7,6 +7,7 @@
 # Variables
 CONFIG_FILE="/var/ossec/etc/ossec.conf"
 DIRECTORY_TO_MONITOR="/root"
+MANAGER_IP=$(hostname -I | awk '{print $1}')  # Get the first IP address of the machine (you can modify this if necessary)
 
 # Check if the script is run as root
 if [[ $EUID -ne 0 ]]; then
@@ -57,7 +58,12 @@ echo "Backing up existing Wazuh configuration file..."
 cp -p $CONFIG_FILE "${CONFIG_FILE}.backup_$(date +%F_%T)"
 echo "Backup created at ${CONFIG_FILE}.backup_$(date +%F_%T)"
 
-# Step 5: Configure FIM
+# Step 5: Replace the MANAGER_IP in the configuration
+echo "Replacing MANAGER_IP in the configuration file..."
+sed -i "s/MANAGER_IP/$MANAGER_IP/g" $CONFIG_FILE
+echo "Manager IP replaced with: $MANAGER_IP"
+
+# Step 6: Configure FIM
 echo "Configuring File Integrity Monitoring for directory: $DIRECTORY_TO_MONITOR"
 if grep -q "<syscheck>" $CONFIG_FILE; then
     # Update existing syscheck block
@@ -68,12 +74,12 @@ else
 fi
 echo "Configuration updated in $CONFIG_FILE."
 
-# Step 6: Set Correct Permissions and Ownership for Wazuh Agent Files
+# Step 7: Set Correct Permissions and Ownership for Wazuh Agent Files
 echo "Setting correct ownership and permissions for Wazuh agent files..."
 sudo chown -R ossec:ossec /var/ossec
 sudo chmod -R 755 /var/ossec
 
-# Step 7: Restart the Agent
+# Step 8: Restart the Agent
 echo "Restarting Wazuh agent to apply changes..."
 sudo systemctl restart wazuh-agent
 if [[ $? -eq 0 ]]; then
@@ -83,11 +89,11 @@ else
     exit 1
 fi
 
-# Step 8: Verify the Setup
+# Step 9: Verify the Setup
 echo "Checking Wazuh agent status..."
 systemctl status wazuh-agent --no-pager
 
-# Step 9: Test File Integrity Monitoring
+# Step 10: Test File Integrity Monitoring
 echo "Testing File Integrity Monitoring..."
 echo "Create, modify, or delete files in the monitored directory (${DIRECTORY_TO_MONITOR}) and check Wazuh alerts."
 
