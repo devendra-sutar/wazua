@@ -68,7 +68,12 @@ else
 fi
 echo "Configuration updated in $CONFIG_FILE."
 
-# Step 6: Restart the Agent
+# Step 6: Set Correct Permissions and Ownership for Wazuh Agent Files
+echo "Setting correct ownership and permissions for Wazuh agent files..."
+sudo chown -R ossec:ossec /var/ossec
+sudo chmod -R 755 /var/ossec
+
+# Step 7: Restart the Agent
 echo "Restarting Wazuh agent to apply changes..."
 sudo systemctl restart wazuh-agent
 if [[ $? -eq 0 ]]; then
@@ -78,11 +83,11 @@ else
     exit 1
 fi
 
-# Step 7: Verify the Setup
+# Step 8: Verify the Setup
 echo "Checking Wazuh agent status..."
 systemctl status wazuh-agent --no-pager
 
-# Step 8: Test File Integrity Monitoring
+# Step 9: Test File Integrity Monitoring
 echo "Testing File Integrity Monitoring..."
 echo "Create, modify, or delete files in the monitored directory (${DIRECTORY_TO_MONITOR}) and check Wazuh alerts."
 
