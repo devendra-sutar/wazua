@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Script to install, configure, and set up Wazuh Agent for File Integrity Monitoring (FIM)
+# Author: <Your Name>
+# Date: $(date)
+
+# Variables
+CONFIG_FILE="/var/ossec/etc/ossec.conf"
+DIRECTORY_TO_MONITOR="/root"
+
+# Check if the script is run as root
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root. Please use sudo."
+   exit 1
+fi
+
+echo "Starting Wazuh Agent Installation and Configuration for FIM..."
+
+# Step 1: Install Wazuh Agent
+echo "Installing Wazuh agent..."
+if command -v apt >/dev/null; then
+    curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo apt-key add -
+    echo "deb https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list
+    sudo apt update && sudo apt install -y wazuh-agent
+elif command -v yum >/dev/null; then
+    sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    cat <<EOF | sudo tee /etc/yum.repos.d/wazuh.repo
+[wazuh]
+gpgcheck=1
+gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+enabled=1
+name=EL - Wazuh
+baseurl=https://packages.wazuh.com/4.x/yum/
+protect=1
+EOF
+    sudo yum install -y wazuh-agent
+else
+    echo "Unsupported package manager. Please install Wazuh agent manually."
+    exit 1
+fi
+
+# Step 2: Enable and Start Wazuh Agent
+echo "Enabling and starting Wazuh agent service..."
+sudo systemctl enable wazuh-agent
+sudo systemctl start wazuh-agent
+
+# Step 3: Verify Installation
+if systemctl status wazuh-agent --no-pager | grep -q "active (running)"; then
+    echo "Wazuh agent installed and running successfully."
+else
+    echo "Wazuh agent failed to start. Check logs for details."
+    exit 1
+fi
+
+# Step 4: Backup Existing Configuration
+echo "Backing up existing Wazuh configuration file..."
+cp -p $CONFIG_FILE "${CONFIG_FILE}.backup_$(date +%F_%T)"
+echo "Backup created at ${CONFIG_FILE}.backup_$(date +%F_%T)"
+
+# Step 5: Configure FIM
+echo "Configuring File Integrity Monitoring for directory: $DIRECTORY_TO_MONITOR"
+if grep -q "<syscheck>" $CONFIG_FILE; then
+    # Update existing syscheck block
+    sed -i "/<syscheck>/,/<\/syscheck>/ s#<directories.*>#<directories check_all=\"yes\" report_changes=\"yes\" realtime=\"yes\">${DIRECTORY_TO_MONITOR}</directories>#" $CONFIG_FILE
+else
+    # Add syscheck block if not present
+    sed -i "/<\/ossec_config>/i \\    <syscheck>\\n        <directories check_all=\"yes\" report_changes=\"yes\" realtime=\"yes\">${DIRECTORY_TO_MONITOR}</directories>\\n    </syscheck>" $CONFIG_FILE
+fi
+echo "Configuration updated in $CONFIG_FILE."
+
+# Step 6: Restart the Agent
+echo "Restarting Wazuh agent to apply changes..."
+sudo systemctl restart wazuh-agent
+if [[ $? -eq 0 ]]; then
+    echo "Wazuh agent restarted successfully."
+else
+    echo "Failed to restart Wazuh agent. Check system logs for details."
+    exit 1
+fi
+
+# Step 7: Verify the Setup
+echo "Checking Wazuh agent status..."
+systemctl status wazuh-agent --no-pager
+
+# Step 8: Test File Integrity Monitoring
+echo "Testing File Integrity Monitoring..."
+echo "Create, modify, or delete files in the monitored directory (${DIRECTORY_TO_MONITOR}) and check Wazuh alerts."
+
+# Final Message
+echo "Setup complete. File Integrity Monitoring is now configured for the Wazuh agent."
