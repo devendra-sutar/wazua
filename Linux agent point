@@ -7,9 +7,27 @@ echo "Updating system and installing dependencies..."
 sudo apt-get update && sudo apt-get install -y curl lsb-release
 
 # Download and install the Wazuh agent
-echo "Downloading and installing Wazuh agent..."
-curl -s https://packages.wazuh.com/4.x/debian/wazuh-4.x_amd64.deb -o /tmp/wazuh-agent.deb
-sudo dpkg -i /tmp/wazuh-agent.deb
+cho "Installing Wazuh agent..."
+if command -v apt >/dev/null; then
+    curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo apt-key add -
+    echo "deb https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list
+    sudo apt update && sudo apt install -y wazuh-agent
+elif command -v yum >/dev/null; then
+    sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    cat <<EOF | sudo tee /etc/yum.repos.d/wazuh.repo
+[wazuh]
+gpgcheck=1
+gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+enabled=1
+name=EL - Wazuh
+baseurl=https://packages.wazuh.com/4.x/yum/
+protect=1
+EOF
+    sudo yum install -y wazuh-agent
+else
+    echo "Unsupported package manager. Please install Wazuh agent manually."
+    exit 1
+fi
 
 # Install missing dependencies (if any)
 echo "Installing missing dependencies..."
