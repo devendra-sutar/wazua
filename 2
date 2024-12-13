@@ -74,6 +74,16 @@ else
 fi
 echo "Configuration updated in $CONFIG_FILE."
 
+# Step 7: Create ossec user and group if they don't exist
+echo "Checking if 'ossec' user and group exist..."
+if ! id "ossec" &>/dev/null; then
+    echo "'ossec' user and/or group not found. Creating 'ossec' user and group..."
+    sudo groupadd ossec
+    sudo useradd -r -g ossec ossec
+    echo "'ossec' user and group created."
+else
+    echo "'ossec' user and group already exist."
+
 # Step 7: Set Correct Permissions and Ownership for Wazuh Agent Files
 echo "Setting correct ownership and permissions for Wazuh agent files..."
 sudo chown -R ossec:ossec /var/ossec
