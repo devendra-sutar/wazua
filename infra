@@ -1,0 +1,18 @@
+user_data = <<-EOF
+   #!/bin/bash
+   echo "setting  up the ubuntu user.."
+   useradd -m -s /bin/bash ubuntu
+   echo "ubuntu:linux" | chpasswd
+   sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+   systemctl restart sshd
+   INSTANCE_IP=$(hostname -I | awk '{print $1}')  (# Get the primary IP address  automatic )  
+   git clone http://${USERNAME}:${PASSWORD}@10.0.32.141/omega-development/omega-code.git (# clone krtoy repo with token and username   usr  karun) 
+   git checkout  <<branch name >>  (  # branch change kren) 
+   echo "export const UI_URL = \"https://${INSTANCE_IP}:9980/\";" >> /home/ubuntu/omega-project/frontend/api-config.js  ( #   ip replace hoin api-config.js madhe
+          frontend   madhe )
+   cd /home/ubuntu/omega-project/frontend
+   sudo rm -rf node_modules
+   npm install
+   nohup npm run dev > frontend.log 2>&1 & exit  (# frontend application chalu hoin )
+   EOF
+}
